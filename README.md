@@ -119,7 +119,3 @@ GitHub Actions runs:
 ## AI usage
 
 AI was used to accelerate scaffolding, schema review, and test generation. All SQL, API code, security settings, and deployment configuration should be reviewed and tested before production use.
-
-## License
-
-MIT
