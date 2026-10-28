@@ -54,6 +54,7 @@ npm run dev
 
 ```bash
 cd frontend
+cp .env.example .env
 npm install
 npm run dev
 ```
@@ -62,12 +63,20 @@ The Vite dev server proxies `/api` to `http://localhost:3000`.
 
 ## Environment variables
 
+### Backend
+
 | Variable | Required | Description |
 |---|---:|---|
 | `PORT` | No | API port; defaults to `3000` |
 | `DATABASE_URL` | Yes | Postgres connection string |
 | `CORS_ORIGIN` | Yes | Comma-separated allowed frontend origins |
 | `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` |
+
+### Frontend
+
+| Variable | Required | Description |
+|---|---:|---|
+| `VITE_API_BASE_URL` | Production only | Deployed backend base URL; leave empty locally to use the Vite proxy |
 
 Never commit `.env`. Use deployment-platform environment variables or AWS Secrets Manager/Parameter Store in production.
 
@@ -94,9 +103,11 @@ Never commit `.env`. Use deployment-platform environment variables or AWS Secret
 
 ### Fallback: Render + Netlify
 
-- Backend: deploy `backend/` using `render.yaml`.
-- Frontend: deploy `frontend/` using `netlify.toml`.
-- Set `DATABASE_URL` and `CORS_ORIGIN` in each platform dashboard.
+1. Deploy `backend/` to Render using `render.yaml`.
+2. Set `DATABASE_URL` to Supabase and `CORS_ORIGIN` to the Netlify frontend URL.
+3. Deploy `frontend/` to Netlify using `netlify.toml`.
+4. Set `VITE_API_BASE_URL` in Netlify to the Render backend URL, such as `https://candidate-feedback-api.onrender.com`.
+5. Test `/health`, candidate creation, interview scheduling, and feedback submission.
 
 ## CI
 
@@ -108,3 +119,7 @@ GitHub Actions runs:
 ## AI usage
 
 AI was used to accelerate scaffolding, schema review, and test generation. All SQL, API code, security settings, and deployment configuration should be reviewed and tested before production use.
+
+## License
+
+MIT
