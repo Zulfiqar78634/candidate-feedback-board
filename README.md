@@ -1,14 +1,17 @@
 # Candidate Feedback Board
 
-A small full-stack application for tracking interview candidates, interviews, and structured feedback.
+A production-oriented full-stack application for tracking interview candidates, interviews, and structured feedback.
 
 ## Stack
 
 - **Frontend:** React + Vite
-- **Backend:** Node.js + Express
+- **Backend:** Node.js 20 + Express
 - **Database:** Supabase Postgres
 - **Validation:** Zod
-- **Deployment target:** AWS App Runner / S3 + CloudFront; fallback Netlify + Render
+- **Security:** Helmet, CORS allowlist, rate limiting
+- **Observability:** Pino structured JSON logs and `/health`
+- **Packaging:** Docker
+- **CI:** GitHub Actions
 
 ## Architecture
 
@@ -22,26 +25,32 @@ Express API
 Supabase Postgres
 ```
 
-## Local setup
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the production architecture, security controls, observability, scaling, and rollback strategy.
 
-### 1. Database
+## Local development
+
+### Option A: Docker Compose
+
+```bash
+docker compose up --build
+```
+
+- API: http://localhost:3000
+- Health: http://localhost:3000/health
+
+### Option B: Supabase + local Node
 
 1. Create a Supabase project.
 2. Run `db/schema.sql` in the Supabase SQL editor.
-3. Copy the project connection string.
-
-### 2. Backend
+3. Copy the connection string.
 
 ```bash
 cd backend
 cp ../.env.example .env
+# Set DATABASE_URL to your Supabase connection string
 npm install
 npm run dev
 ```
-
-Set `DATABASE_URL` in `backend/.env`.
-
-### 3. Frontend
 
 ```bash
 cd frontend
@@ -51,24 +60,51 @@ npm run dev
 
 The Vite dev server proxies `/api` to `http://localhost:3000`.
 
+## Environment variables
+
+| Variable | Required | Description |
+|---|---:|---|
+| `PORT` | No | API port; defaults to `3000` |
+| `DATABASE_URL` | Yes | Postgres connection string |
+| `CORS_ORIGIN` | Yes | Comma-separated allowed frontend origins |
+| `LOG_LEVEL` | No | `debug`, `info`, `warn`, or `error` |
+
+Never commit `.env`. Use deployment-platform environment variables or AWS Secrets Manager/Parameter Store in production.
+
 ## API
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | Service health check |
-| GET | `/api/candidates` | List candidates with interview feedback |
-| POST | `/api/candidates` | Create a candidate |
-| POST | `/api/candidates/:id/interviews` | Schedule an interview |
-| POST | `/api/interviews/:id/feedback` | Add interview feedback |
+| GET | `/health` | Checks API and database health |
+| GET | `/api/candidates` | Lists candidates with aggregate feedback |
+| POST | `/api/candidates` | Creates a candidate |
+| POST | `/api/candidates/:id/interviews` | Schedules an interview |
+| POST | `/api/interviews/:id/feedback` | Adds structured interview feedback |
 
-## Deployment
+## Production deployment
 
-- Frontend: S3 + CloudFront or Netlify
-- Backend: AWS App Runner or Render
-- Database: Supabase Postgres
-- Secrets: environment variables; never commit `.env`
-- Health check: `GET /health`
+### AWS
+
+- **Frontend:** Build React, upload `dist/` to S3, serve through CloudFront.
+- **Backend:** Build `backend/Dockerfile`, push to Amazon ECR, deploy through App Runner or ECS Fargate.
+- **Database:** Supabase Postgres.
+- **Secrets:** AWS Secrets Manager or Systems Manager Parameter Store.
+- **Logs:** CloudWatch Logs.
+- **Health check:** `GET /health`.
+
+### Fallback: Render + Netlify
+
+- Backend: deploy `backend/` using `render.yaml`.
+- Frontend: deploy `frontend/` using `netlify.toml`.
+- Set `DATABASE_URL` and `CORS_ORIGIN` in each platform dashboard.
+
+## CI
+
+GitHub Actions runs:
+
+1. Backend tests.
+2. Frontend production build.
 
 ## AI usage
 
-AI was used to accelerate boilerplate, schema review, and test ideas. All generated SQL, routes, validation, and deployment configuration should be reviewed and tested before use.
+AI was used to accelerate scaffolding, schema review, and test generation. All SQL, API code, security settings, and deployment configuration should be reviewed and tested before production use.
