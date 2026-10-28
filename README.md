@@ -27,6 +27,14 @@ Supabase Postgres
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the production architecture, security controls, observability, scaling, and rollback strategy.
 
+## Features
+
+- Create and list candidates.
+- Select a candidate and view their interviews and feedback.
+- Schedule interviews.
+- Submit structured interview feedback with rating, strengths, concerns, and recommendation.
+- View aggregate interview count and average rating.
+
 ## Local development
 
 ### Option A: Docker Compose
@@ -86,6 +94,7 @@ Never commit `.env`. Use deployment-platform environment variables or AWS Secret
 |---|---|---|
 | GET | `/health` | Checks API and database health |
 | GET | `/api/candidates` | Lists candidates with aggregate feedback |
+| GET | `/api/candidates/:id` | Returns a candidate with interviews and feedback |
 | POST | `/api/candidates` | Creates a candidate |
 | POST | `/api/candidates/:id/interviews` | Schedules an interview |
 | POST | `/api/interviews/:id/feedback` | Adds structured interview feedback |

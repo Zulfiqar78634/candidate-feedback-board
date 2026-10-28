@@ -53,6 +53,8 @@ app.use(
   })
 );
 
+const uuidSchema = z.string().uuid();
+
 const candidateSchema = z.object({
   name: z.string().min(1).max(120),
   email: z.string().email().max(254),
@@ -106,6 +108,66 @@ app.get('/api/candidates', async (_req, res, next) => {
   }
 });
 
+app.get('/api/candidates/:id', async (req, res, next) => {
+  try {
+    const candidateId = uuidSchema.parse(req.params.id);
+
+    const candidateResult = await pool.query(
+      `select id, name, email, role, status, created_at
+       from candidates
+       where id = $1`,
+      [candidateId]
+    );
+
+    if (candidateResult.rowCount === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+
+    const interviewResult = await pool.query(
+      `select
+        i.id,
+        i.interviewer,
+        i.scheduled_at,
+        i.status,
+        f.id as feedback_id,
+        f.rating,
+        f.strengths,
+        f.concerns,
+        f.recommendation,
+        f.created_at as feedback_created_at
+      from interviews i
+      left join feedback f on f.interview_id = i.id
+      where i.candidate_id = $1
+      order by i.scheduled_at desc`,
+      [candidateId]
+    );
+
+    const interviews = interviewResult.rows.map((row) => ({
+      id: row.id,
+      interviewer: row.interviewer,
+      scheduledAt: row.scheduled_at,
+      status: row.status,
+      feedback: row.feedback_id
+        ? {
+            id: row.feedback_id,
+            rating: row.rating,
+            strengths: row.strengths,
+            concerns: row.concerns,
+            recommendation: row.recommendation,
+            createdAt: row.feedback_created_at
+          }
+        : null
+    }));
+
+    res.json({
+      ...candidateResult.rows[0],
+      interviews
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post('/api/candidates', async (req, res, next) => {
   try {
     const data = candidateSchema.parse(req.body);
@@ -124,12 +186,13 @@ app.post('/api/candidates', async (req, res, next) => {
 
 app.post('/api/candidates/:id/interviews', async (req, res, next) => {
   try {
+    const candidateId = uuidSchema.parse(req.params.id);
     const data = interviewSchema.parse(req.body);
     const { rows } = await pool.query(
       `insert into interviews (candidate_id, interviewer, scheduled_at)
        values ($1, $2, $3)
        returning *`,
-      [req.params.id, data.interviewer, data.scheduledAt]
+      [candidateId, data.interviewer, data.scheduledAt]
     );
 
     res.status(201).json(rows[0]);
@@ -140,6 +203,7 @@ app.post('/api/candidates/:id/interviews', async (req, res, next) => {
 
 app.post('/api/interviews/:id/feedback', async (req, res, next) => {
   try {
+    const interviewId = uuidSchema.parse(req.params.id);
     const data = feedbackSchema.parse(req.body);
     const { rows } = await pool.query(
       `insert into feedback
@@ -147,7 +211,7 @@ app.post('/api/interviews/:id/feedback', async (req, res, next) => {
        values ($1, $2, $3, $4, $5)
        returning *`,
       [
-        req.params.id,
+        interviewId,
         data.rating,
         data.strengths,
         data.concerns,
